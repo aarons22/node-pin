@@ -58,6 +58,23 @@ Keep these stable or existing installs break:
 - **Settings…** has the band filter (5 GHz, 2.4 GHz or both), Launch at Login and node names
   (stored in UserDefaults, keyed by 5 GHz BSSID).
 
+## Diagnostics and analytics
+To check whether your nodes are well placed, turn on **Settings… → Diagnostics → Record diagnostics**.
+- Every 5 minutes NodePin records the node, signal, link rate and a ping to the router (from a
+  satellite node, that ping crosses the mesh backhaul). It doesn't scan in the background.
+- Speed tests use macOS's `networkQuality`, automatically on a schedule and from **Test This Node** in
+  the menu. **Test All Nodes** switches to each node in turn, tests it from where you sit and switches
+  back, which is the fairest comparison of the nodes themselves.
+- For LAN speed (not capped by your internet plan), run this on a Mac wired to your router, ideally to
+  the gateway eero, then click **Find** in Settings:
+
+      scripts/lan-test-server.sh install
+
+- Pick the room you're in from the menu so samples taken far from a node aren't blamed on the node.
+- **Analytics…** in the menu shows per-node medians, speed vs. signal and speed over time. A node
+  whose points sit below the others at the same signal has a weak link back to the router. Export
+  CSV from the same window. Data lives in `~/Library/Application Support/NodePin/diagnostics.jsonl`.
+
 ## Confirm the node mapping
 Nodes start unnamed; name them as you identify them.
 1. Open the menu and note the nodes.
@@ -69,8 +86,8 @@ Repeat after replacing nodes: BSSIDs change with hardware.
 ## Notes
 - Matching is by BSSID, never channel. The two radios of a node are paired by BSSID (same first five
   octets, last octet differs by one); the band decides which is the 5 GHz one.
-- Scans are throttled to once per 10 s and run when the menu opens. No background polling and no
-  automatic switching.
+- Scans are throttled to once per 10 s and run when the menu opens. Without diagnostics turned on
+  there is no background activity, and NodePin only switches nodes when you click one (or run Test All Nodes).
 - macOS may still roam away after a switch; the label follows it.
 - Works with any network that has several access points on one SSID (mesh or wired APs). Radio
   pairing assumes a node's 2.4 and 5 GHz BSSIDs differ by one in the last octet, as on eero; on

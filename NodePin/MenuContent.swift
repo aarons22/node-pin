@@ -37,6 +37,7 @@ struct MenuBarLabel: View {
 struct MenuContent: View {
     let location: LocationGate
     let wifi: WiFiService
+    let diagnostics: Diagnostics
     let updater: Updater
     @Environment(\.openWindow) private var openWindow
     @Environment(\.dismiss) private var dismiss
@@ -69,13 +70,13 @@ struct MenuContent: View {
                         .fixedSize(horizontal: false, vertical: true)
                         .padding(.horizontal, 8).padding(.vertical, 2)
                 }
+                if diagnostics.isEnabled { diagnosticsSection }
             }
             Divider().padding(.vertical, 4)
-            MenuRow {
-                NSApp.activate()
-                openWindow(id: "settings")
-                dismiss()
-            } label: { Text("Settings…") }
+            if diagnostics.isEnabled || !diagnostics.samples.isEmpty {
+                MenuRow { open("analytics") } label: { Text("Analytics…") }
+            }
+            MenuRow { open("settings") } label: { Text("Settings…") }
             .keyboardShortcut(",")
             if Updater.isEnabled {
                 MenuRow {
@@ -151,6 +152,57 @@ struct MenuContent: View {
         if isTarget { return "Connecting…" }
         guard row.isSwitchable, let rssi = row.rssi else { return "not visible" }
         return dBm(rssi)
+    }
+
+    /// Room tag, on-demand tests and the latest result. Shown when diagnostics are on.
+    @ViewBuilder private var diagnosticsSection: some View {
+        Divider().padding(.vertical, 4)
+        HStack {
+            Text("Diagnostics").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+            Spacer()
+            Picker("Room", selection: Bindable(diagnostics).room) {
+                Text("No room").tag("")
+                ForEach(diagnostics.rooms, id: \.self) { Text($0).tag($0) }
+            }
+            .labelsHidden().fixedSize().controlSize(.small)
+            .help("Where this Mac is now. Add rooms in Settings → Diagnostics.")
+        }
+        .padding(.horizontal, 8).padding(.vertical, 2)
+        if diagnostics.isTesting {
+            HStack(spacing: 8) {
+                ProgressView().controlSize(.small)
+                Text(diagnostics.status ?? "Testing…").font(.callout).lineLimit(1)
+                Spacer()
+                Button("Stop") { diagnostics.cancel() }.controlSize(.small)
+            }
+            .padding(.horizontal, 8).padding(.vertical, 4)
+        } else {
+            MenuRow { diagnostics.testCurrentNode() } label: { Text("Test This Node") }
+                .disabled(wifi.connection == nil || wifi.switchingTo != nil)
+            MenuRow { diagnostics.testAllNodes() } label: { Text("Test All Nodes") }
+                .disabled(wifi.connection == nil || wifi.switchingTo != nil)
+                .help("Switches to each node in turn, tests it from here, then switches back.")
+        }
+        if let s = diagnostics.lastSample {
+            Text(summary(s)).font(.caption).foregroundStyle(.secondary).monospacedDigit()
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.horizontal, 8).padding(.vertical, 2)
+        }
+    }
+
+    private func summary(_ s: Sample) -> String {
+        var parts = [diagnostics.nodeName(s.node)]
+        if let p = s.pingMs { parts.append("ping \(p.formatted(.number.precision(.fractionLength(1)))) ms") }
+        if let d = s.lanDown, let u = s.lanUp { parts.append("LAN \(Int(d))↓ \(Int(u))↑") }
+        if let d = s.wanDown, let u = s.wanUp { parts.append("Net \(Int(d))↓ \(Int(u))↑") }
+        let when = s.date.formatted(.relative(presentation: .named))
+        return "Last: " + parts.joined(separator: " · ") + " · \(when)" + (s.error.map { "\n\($0)" } ?? "")
+    }
+
+    private func open(_ window: String) {
+        NSApp.activate()
+        openWindow(id: window)
+        dismiss()
     }
 
     private func dBm(_ v: Int) -> String { "\u{2212}\(abs(v)) dBm" }

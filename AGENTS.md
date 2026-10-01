@@ -23,12 +23,15 @@ picked up without editing `project.pbxproj`).
 | `MenuContent.swift` | Menu bar label and panel UI, `MenuRow`, `PanelVisibility` (open/close tracking via key-window notifications), `LoginItem`. |
 | `SettingsView.swift` | General tab (band filter, menu bar name toggle, launch at login, diagnostics log, saved Wi-Fi passwords). |
 | `NodeNamingView.swift` | Nodes tab: name each node. |
+| `Diagnostics.swift` | Opt-in per-node history: `Sample`, `Probe` (ping, `networkQuality` bound to the Wi-Fi interface) and `Diagnostics` (5-minute sampling loop, scheduled and on-demand speed tests, "Test All Nodes", JSON-lines storage in `~/Library/Application Support/NodePin/diagnostics.jsonl`, CSV export). Settings → Diagnostics tab lives in `SettingsView.swift`. |
+| `AnalyticsView.swift` | Analytics window (id `"analytics"`): per-node medians, metric vs. signal scatter, metric over time (Swift Charts). |
 | `LocationGate.swift` | Location authorization. Without it macOS hides BSSIDs. |
 | `DebugLog.swift` | Opt-in file log (Settings → Diagnostics). Never log passwords. |
 | `Updater.swift` | Sparkle wrapper, disabled in Debug builds. |
 
 Other files: `Info.plist` (Sparkle feed URL and public EdDSA key), `NodePin.entitlements` (Location
-only), `NodePin/AppIcon.icon` (Icon Composer icon), `scripts/release.sh`.
+only), `NodePin/AppIcon.icon` (Icon Composer icon), `scripts/release.sh`, `scripts/lan-test-server.sh`
+(installs `networkQuality -S 4443` as a LaunchAgent on a wired Mac, the LAN speed test target).
 
 ## Build
 ```bash
@@ -60,7 +63,13 @@ behavior can only be verified on real hardware with several access points.
   `FallbackWiFiPassword` copy, then the System keychain, then an NSAlert that asks the user and saves
   the answer as a fallback copy.
 - Scans are throttled to once per 10 s (scans interrupt traffic) and run only while the menu is open
-  or during a switch. There is no background polling and no automatic switching.
+  or during a switch. The only background work is opt-in diagnostics (off by default): it reads the
+  current connection and pings every 5 minutes and runs scheduled speed tests on the current node,
+  but never scans or switches. The only automatic switching is the user-started "Test All Nodes",
+  which returns to the starting node.
+- Diagnostics probes are bound to the Wi-Fi interface (`ping -b`, `networkQuality -I`) so a wired
+  connection can't skew them. Every sample records signal (RSSI) and room, so speed can be compared
+  at equal signal; don't drop those fields.
 - **Signing:** App Sandbox off, Hardened Runtime on, signed as "Apple Development: Aaron Sapp
   (S8JX59Y844)" (team `CAZ63TUDYL`). Changing the identity resets users' Location and keychain grants.
 - **Bundle ID** `com.tinyvlogllc.NodePin`. Renamed from EeroPin. The migration code in

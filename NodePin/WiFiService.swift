@@ -33,6 +33,8 @@ final class WiFiService {
     /// Toggles during the start of a flash so the menu bar icon blinks.
     private(set) var flashBlink = false
 
+    /// Set by diagnostics during a speed test: a scan mid-test would interrupt traffic and skew it.
+    @ObservationIgnored var holdScans = false
     @ObservationIgnored private var networks: [String: CWNetwork] = [:]
     @ObservationIgnored private var scannedSSID: String?
     @ObservationIgnored private var lastKnownSSID: String?
@@ -60,10 +62,15 @@ final class WiFiService {
         return NodeGrouping.displayName(forBSSID: c.bssid, names: store.nodeNames)
     }
 
+    /// Works without a scan: an unmatched 2.4 GHz radio is keyed by its presumed 5 GHz partner.
     var currentNodeKey: String? {
         guard let c = connection else { return nil }
-        return NodeGrouping.nodeKey(forBSSID: c.bssid, in: nodes) ?? BSSID.normalize(c.bssid)
+        return NodeGrouping.nodeKey(forBSSID: c.bssid, in: nodes)
+            ?? (c.is5GHz ? c.bssid : BSSID.adjacent(c.bssid, by: -1))
     }
+
+    /// BSD name of the Wi-Fi interface (usually en0), so diagnostics probes can be bound to Wi-Fi.
+    var interfaceName: String? { CWWiFiClient.shared().interface()?.interfaceName }
 
     init(store: NodeStore) {
         self.store = store
@@ -92,7 +99,7 @@ final class WiFiService {
                 guard let self else { return }
                 self.refreshCurrent()
                 // A switch runs its own scans; don't interrupt it.
-                if self.switchingTo == nil { await self.scan() }
+                if self.switchingTo == nil, !self.holdScans { await self.scan() }
                 try? await Task.sleep(for: .seconds(2))
             }
         }
