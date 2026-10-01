@@ -32,6 +32,7 @@ struct MenuBarLabel: View {
 struct MenuContent: View {
     let location: LocationGate
     let wifi: WiFiService
+    let updater: Updater
     @Environment(\.openWindow) private var openWindow
     @Environment(\.dismiss) private var dismiss
 
@@ -71,6 +72,12 @@ struct MenuContent: View {
                 dismiss()
             } label: { Text("Settings…") }
             .keyboardShortcut(",")
+            if Updater.isEnabled {
+                MenuRow {
+                    dismiss()
+                    updater.checkForUpdates()
+                } label: { Text("Check for Updates…") }
+            }
             MenuRow { NSApplication.shared.terminate(nil) } label: { Text("Quit NodePin") }
                 .keyboardShortcut("q")
         }

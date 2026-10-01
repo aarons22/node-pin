@@ -3,6 +3,7 @@ import SwiftUI
 @main struct NodePinApp: App {
     @State private var location: LocationGate
     @State private var wifi: WiFiService
+    private let updater = Updater()
 
     init() {
         let gate = LocationGate()
@@ -18,7 +19,7 @@ import SwiftUI
 
     var body: some Scene {
         MenuBarExtra {
-            MenuContent(location: location, wifi: wifi)
+            MenuContent(location: location, wifi: wifi, updater: updater)
         } label: {
             MenuBarLabel(location: location, wifi: wifi)
         }

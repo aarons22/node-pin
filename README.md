@@ -3,6 +3,19 @@
 macOS menu bar app that shows which access point (node) of a multi-AP Wi-Fi network the Mac is connected to and switches to another
 node's 5 GHz radio with one click (CoreWLAN `associate(to:password:)` pins the BSSID).
 
+## Install
+Requires macOS 14 or later.
+1. Download `NodePin-<version>.zip` from the [latest release](https://github.com/aarons22/node-pin/releases/latest),
+   unzip it and move `NodePin.app` to **/Applications** (updates can't install anywhere else).
+2. Open it. NodePin isn't notarized by Apple, so macOS blocks the first launch: open
+   **System Settings → Privacy & Security**, scroll to the NodePin message and click **Open Anyway**.
+   This is needed only once.
+3. Allow Location access when asked. Without it macOS hides access point addresses.
+4. Optionally turn on **Launch at Login** in the menu.
+
+NodePin checks for updates once a day and offers to install them; **Check for Updates…** in the
+menu checks now. Updates keep your node names and permissions.
+
 ## Build and run
 Open `NodePin.xcodeproj` in Xcode and run, or:
 
@@ -12,8 +25,24 @@ Open `NodePin.xcodeproj` in Xcode and run, or:
 
 Requirements: App Sandbox off, Hardened Runtime on with the Location entitlement, signed with a
 stable team identity (so the Location permission survives rebuilds). Allow Location access on first
-launch; without it macOS hides BSSIDs. Copy the built app to /Applications and turn on
-**Launch at Login** in the menu.
+launch; without it macOS hides BSSIDs. Debug builds don't check for updates.
+
+## Release
+    scripts/release.sh 1.2.0             # tag, build, sign, publish to GitHub Releases
+    scripts/release.sh 1.2.0 --dry-run   # build the zip and appcast into build/release only
+
+The script builds a universal Release app signed with the Apple Development certificate, zips it,
+signs the zip with the Sparkle EdDSA key (login keychain, account `node-pin`) and uploads the zip and
+`appcast.xml` to a new GitHub release. The app reads the appcast from the latest release. Build
+numbers are the commit count on main, so release from main and never rewrite its history.
+
+Keep these stable or existing installs break:
+- **Sparkle private key.** Without it, updates can't be signed for existing installs. Back it up:
+  `build/SourcePackages/artifacts/sparkle/Sparkle/bin/generate_keys --account node-pin -x node-pin-sparkle.key`
+  and store the file somewhere safe (not in the repo).
+- **Signing certificate name.** Apps are trusted by the name "Apple Development: Aaron Sapp
+  (S8JX59Y844)". A renewed certificate with the same name keeps Location and keychain grants;
+  signing with anything else makes users grant them again.
 
 ## Using it
 - The menu bar shows the current node's name (or the last two BSSID octets if unnamed).
