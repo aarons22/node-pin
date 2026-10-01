@@ -168,12 +168,28 @@ final class WiFiService {
         guard let ssid = currentSSID ?? lastKnownSSID else { fail("Not connected to a Wi-Fi network."); return }
         lastKnownSSID = ssid
 
-        // macOS refuses passwordless joins (tmpErr -3900), so use the password it already saved.
+        // macOS refuses passwordless joins (tmpErr -3900), so use the password it already saved,
+        // or the user's own copy when the System keychain can't be read (it needs an admin to unlock).
         let password: String
-        switch await Task.detached(operation: { SystemWiFiPassword.lookup(ssid: ssid) }).value {
-        case .success(let pw): password = pw
-        case .failure(let e): fail(e.localizedDescription); return
+        var usedFallback = false
+        if let pw = FallbackWiFiPassword.lookup(ssid: ssid) {
+            password = pw
+            usedFallback = true
+        } else {
+            switch await Task.detached(operation: { SystemWiFiPassword.lookup(ssid: ssid) }).value {
+            case .success(let pw): password = pw
+            case .failure(let e):
+                DebugLog.write("system keychain lookup failed: \(e.localizedDescription)")
+                guard let pw = Self.askForPassword(ssid: ssid, reason: e.localizedDescription) else {
+                    fail(e.localizedDescription); return
+                }
+                FallbackWiFiPassword.save(pw, ssid: ssid)
+                password = pw
+                usedFallback = true
+            }
         }
+        let wrongPasswordHint = usedFallback
+            ? " If the Wi-Fi password changed, forget the saved one in Settings." : ""
 
         // CWNetwork objects from an old scan can fail to associate, so refresh first.
         if lastScan.map({ Date().timeIntervalSince($0) > 20 }) ?? true {
@@ -197,11 +213,27 @@ final class WiFiService {
                 return
             }
             DebugLog.write("associate threw: \(describe(error))")
-            if attempt == 1 { fail("Couldn't switch to \(label): \(describe(error))"); return }
+            if attempt == 1 { fail("Couldn't switch to \(label): \(describe(error)).\(wrongPasswordHint)"); return }
             switchStatus = "Scanning for \(label)…"
             await scan(force: true)
         }
         fail("\(label) isn't visible right now.")
+    }
+
+    /// Asks for the Wi-Fi password when macOS's saved copy can't be read. Nil if the user cancels.
+    private static func askForPassword(ssid: String, reason: String) -> String? {
+        let alert = NSAlert()
+        alert.messageText = "Enter the password for \(ssid)"
+        alert.informativeText = "\(reason)\n\nNodePin will keep this password in your login keychain and use it for later switches. You can forget it in Settings."
+        let field = NSSecureTextField(frame: NSRect(x: 0, y: 0, width: 260, height: 24))
+        field.placeholderString = "Wi-Fi password"
+        alert.accessoryView = field
+        alert.addButton(withTitle: "Switch")
+        alert.addButton(withTitle: "Cancel")
+        alert.window.initialFirstResponder = field
+        NSApp.activate()
+        guard alert.runModal() == .alertFirstButtonReturn, !field.stringValue.isEmpty else { return nil }
+        return field.stringValue
     }
 
     /// The public `associate(to:password:)` lets macOS pick the best AP for the SSID and ignores which

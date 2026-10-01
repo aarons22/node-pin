@@ -47,8 +47,13 @@ Keep these stable or existing installs break:
 ## Using it
 - The menu bar shows the current node's name (or the last two BSSID octets if unnamed).
 - Open the menu to see every node, strongest first. Click one to switch. NodePin uses the Wi-Fi password macOS already saved
-  for the network (System keychain, service `AirPort`) and never stores one itself. The first switch
+  for the network (System keychain, service `AirPort`). The first switch
   shows macOS's keychain prompt: enter your Mac login password and choose **Always Allow**.
+- That prompt needs an admin account. If the System keychain can't be read (no admin rights, prompt
+  cancelled, or no saved password), NodePin asks for the Wi-Fi password and keeps its own copy
+  in your login keychain (service `NodePin`), which needs no admin. Later switches use that copy
+  without prompting. **Settings… → General** lists saved copies and lets you forget them; forget one
+  after changing the Wi-Fi password.
 - Failures appear as a notification and as a line in the menu.
 - **Settings…** has the band filter (5 GHz, 2.4 GHz or both), Launch at Login and node names
   (stored in UserDefaults, keyed by 5 GHz BSSID).
