@@ -28,12 +28,19 @@ final class WiFiService {
     private(set) var bssidsHidden = false
     /// Last problem, shown in the menu as well as a notification (which the user may have muted).
     private(set) var notice: String?
+    /// Name briefly shown in the menu bar after moving to another node while names are hidden.
+    private(set) var flashName: String?
+    /// Toggles during the start of a flash so the menu bar icon blinks.
+    private(set) var flashBlink = false
 
     @ObservationIgnored private var networks: [String: CWNetwork] = [:]
     @ObservationIgnored private var scannedSSID: String?
     @ObservationIgnored private var lastKnownSSID: String?
     @ObservationIgnored private var scanTask: Task<Void, Never>?
     @ObservationIgnored private var liveUpdates: Task<Void, Never>?
+    @ObservationIgnored private var flashTask: Task<Void, Never>?
+    /// Last BSSID we were on, kept across disconnects so rejoining a different node also flashes.
+    @ObservationIgnored private var lastBSSID: String?
     @ObservationIgnored private let events = EventBridge()
 
     var nodes: [PhysicalNode] { NodeGrouping.merge(radios, names: store.nodeNames) }
@@ -102,6 +109,8 @@ final class WiFiService {
                              txRate: iface.transmitRate(), channel: channel?.channelNumber ?? 0,
                              is5GHz: channel?.channelBand == .band5GHz)
         if new != connection { connection = new }
+        if let last = lastBSSID, last != new.bssid, !BSSID.arePaired(last, new.bssid) { flashCurrentName() }
+        lastBSSID = new.bssid
         if let ssid = new.ssid { lastKnownSSID = ssid }
         // Joined a different network: old scan results belong to the previous one.
         if let ssid = new.ssid, let scanned = scannedSSID, ssid != scanned {
@@ -109,6 +118,24 @@ final class WiFiService {
             networks = [:]
             scannedSSID = nil
             lastScan = nil
+        }
+    }
+
+    /// Blinks the icon, then holds the name for a few seconds. Only used when names are hidden.
+    private func flashCurrentName() {
+        flashTask?.cancel()
+        guard !store.showNameInMenuBar, let name = currentName else { flashName = nil; return }
+        flashName = name
+        flashTask = Task { [weak self] in
+            for _ in 0..<8 {
+                try? await Task.sleep(for: .milliseconds(300))
+                guard !Task.isCancelled else { return }
+                self?.flashBlink.toggle()
+            }
+            try? await Task.sleep(for: .seconds(4))
+            guard !Task.isCancelled else { return }
+            self?.flashName = nil
+            self?.flashBlink = false
         }
     }
 

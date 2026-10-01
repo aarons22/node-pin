@@ -16,12 +16,12 @@ picked up without editing `project.pbxproj`).
 | File | Role |
 |---|---|
 | `NodePinApp.swift` | `@main`. Builds `LocationGate`, `NodeStore` and `WiFiService`, and declares the menu bar extra and the Settings `Window` (id `"settings"`). |
-| `WiFiService.swift` | Core logic: current connection, throttled scans, `switchTo(_:)`, BSSID-pinned association, landing confirmation, failure notices and notifications. |
+| `WiFiService.swift` | Core logic: current connection, throttled scans, menu bar name flash on node change, `switchTo(_:)`, BSSID-pinned association, landing confirmation, failure notices and notifications. |
 | `NodeModel.swift` | Pure value types and logic: `ScannedRadio`, `PhysicalNode`, `RadioRow`, `BandFilter`, `BSSID` (normalize/pairing/labels) and `NodeGrouping` (radios → nodes → rows). |
-| `NodeStore.swift` | UserDefaults: node names keyed by 5 GHz BSSID, band filter, one-time migration from the old EeroPin defaults. |
+| `NodeStore.swift` | UserDefaults: node names keyed by 5 GHz BSSID, band filter, menu bar name visibility, one-time migration from the old EeroPin defaults. |
 | `SystemWiFiPassword.swift` | `SystemWiFiPassword` reads macOS's saved password (System keychain, service `AirPort`). `FallbackWiFiPassword` stores a user-entered copy in the login keychain (service `NodePin`) when the System keychain can't be read, for example without admin rights. |
 | `MenuContent.swift` | Menu bar label and panel UI, `MenuRow`, `PanelVisibility` (open/close tracking via key-window notifications), `LoginItem`. |
-| `SettingsView.swift` | General tab (band filter, launch at login, diagnostics log, saved Wi-Fi passwords). |
+| `SettingsView.swift` | General tab (band filter, menu bar name toggle, launch at login, diagnostics log, saved Wi-Fi passwords). |
 | `NodeNamingView.swift` | Nodes tab: name each node. |
 | `LocationGate.swift` | Location authorization. Without it macOS hides BSSIDs. |
 | `DebugLog.swift` | Opt-in file log (Settings → Diagnostics). Never log passwords. |

@@ -16,7 +16,12 @@ struct MenuBarLabel: View {
     var body: some View {
         if !location.isAuthorized || wifi.bssidsHidden {
             Image(systemName: "exclamationmark.triangle")
-        } else if let name = wifi.currentName {
+        } else if let name = wifi.flashName {
+            HStack(spacing: 4) {
+                Image(systemName: wifi.flashBlink ? "wifi.router" : "wifi.router.fill")
+                Text(name)
+            }
+        } else if let name = wifi.currentName, wifi.store.showNameInMenuBar {
             HStack(spacing: 4) { Image(systemName: "wifi.router"); Text(name) }
         } else if wifi.connection != nil {
             Image(systemName: "wifi.router")

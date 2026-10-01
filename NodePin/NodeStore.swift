@@ -1,10 +1,12 @@
 import Foundation
 import Observation
 
-/// Persisted settings: band filter and node names keyed by lowercased 5 GHz BSSID.
+/// Persisted settings: band filter, menu bar name visibility and node names keyed by lowercased 5 GHz BSSID.
 @Observable
 final class NodeStore {
     var bandFilter: BandFilter { didSet { defaults.set(bandFilter.rawValue, forKey: "bandFilter") } }
+    /// When off, the menu bar shows only the icon and briefly flashes the name after a node change.
+    var showNameInMenuBar: Bool { didSet { defaults.set(showNameInMenuBar, forKey: "showNameInMenuBar") } }
     private(set) var nodeNames: [String: String]
     @ObservationIgnored private let defaults: UserDefaults
 
@@ -12,6 +14,7 @@ final class NodeStore {
         self.defaults = defaults
         Self.migrateFromEeroPin(into: defaults)
         bandFilter = defaults.string(forKey: "bandFilter").flatMap(BandFilter.init) ?? .five
+        showNameInMenuBar = defaults.object(forKey: "showNameInMenuBar") as? Bool ?? true
         nodeNames = defaults.dictionary(forKey: "nodeNames") as? [String: String] ?? [:]
     }
 

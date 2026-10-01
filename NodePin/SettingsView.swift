@@ -28,6 +28,12 @@ private struct GeneralSettings: View {
             Text("Both lists each node's 5 GHz and 2.4 GHz radio as separate rows.")
                 .font(.caption).foregroundStyle(.secondary)
 
+            Toggle("Show node name in menu bar", isOn: $store.showNameInMenuBar)
+            if !store.showNameInMenuBar {
+                Text("The name still flashes briefly in the menu bar when you move to another node.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+
             Toggle("Launch at Login", isOn: $launchAtLogin)
                 .onChange(of: launchAtLogin) { _, on in LoginItem.set(on) }
 
