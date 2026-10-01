@@ -7,8 +7,8 @@
       "layers" : [
         {
           "glass" : true,
-          "image-name" : "pin.svg",
-          "name" : "pin"
+          "image-name" : "router.svg",
+          "name" : "router"
         }
       ],
       "shadow" : {
